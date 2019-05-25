@@ -9,7 +9,7 @@ setup(
     description='Organizes photos and videos into folders using date/time information ',
     author='Andrew Ning',
     packages=find_packages(),
-    include_package_data=True,
+    include_package_data=False,
     license='MIT License',
     entry_points={
         'console_scripts': [

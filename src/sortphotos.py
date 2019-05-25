@@ -26,8 +26,7 @@ import locale
 # Setting locale to the 'local' value
 locale.setlocale(locale.LC_ALL, '')
 
-exiftool_location = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Image-ExifTool', 'exiftool')
-
+exiftool_location = "/usr/local/bin/exiftool"
 
 # -------- convenience methods -------------
 
