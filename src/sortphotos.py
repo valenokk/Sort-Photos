@@ -231,48 +231,6 @@ def check_for_early_morning_photos(date, day_begins):
 
 	return date
 
-
-#  this class is based on code from Sven Marnach (http://stackoverflow.com/questions/10075115/call-exiftool-from-a-python-script)
-class ExifTool(object):
-	"""used to run ExifTool from Python and keep it open"""
-
-	sentinel = "{ready}"
-
-	def __init__(self, executable=exiftool_location, verbose=False):
-		self.executable = executable
-		self.verbose = verbose
-
-	def __enter__(self):
-		self.process = subprocess.Popen(
-			['perl', self.executable, "-stay_open", "True",  "-@", "-"],
-			stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-		return self
-
-	def __exit__(self, exc_type, exc_value, traceback):
-		self.process.stdin.write(b'-stay_open\nFalse\n')
-		self.process.stdin.flush()
-
-	def execute(self, *args):
-		args = args + ("-execute\n",)
-		self.process.stdin.write(str.join("\n", args).encode('utf-8'))
-		self.process.stdin.flush()
-		output = ""
-		fd = self.process.stdout.fileno()
-		while not output.rstrip(' \t\n\r').endswith(self.sentinel):
-			increment = os.read(fd, 4096)
-			if self.verbose:
-				sys.stdout.write(increment.decode('utf-8'))
-			output += increment.decode('utf-8')
-		return output.rstrip(' \t\n\r')[:-len(self.sentinel)]
-
-	def get_metadata(self, *args):
-
-		try:
-			return json.loads(self.execute(*args))
-		except ValueError:
-			sys.stdout.write('No files to parse or invalid data\n')
-			exit()
-
 def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, day_begins=0, copy_files=False, test=False, remove_duplicates=True, verbose=True, disable_time_zone_adjust=False, ignore_file_types=[], additional_groups_to_ignore=['File'], additional_tags_to_ignore=[], use_only_groups=None, use_only_tags=None, rename_with_camera_model=False, show_warnings=True, src_file_regex=None, src_file_extension=[], prioritize_groups=None, prioritize_tags=None):
 	   
 	"""
@@ -378,10 +336,9 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, d
 	args += [src_dir]
 
 	# get all metadata
-	with ExifTool(verbose=verbose) as e:
-		print('Preprocessing with ExifTool.  May take a while for a large number of files.')
-		sys.stdout.flush()
-		metadata = e.get_metadata(*args)
+	print('Preprocessing with ExifTool.  May take a while for a large number of files.')
+	metadata = ExifTool(args, verbose)
+
 
 	# setup output to screen
 	num_files = len(metadata)
@@ -552,6 +509,19 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, d
 	print('Files skipped (' + str(len(files_skipped)) + '): ')
 	for skipped in files_skipped:
 		print('\t' + str(skipped))
+
+
+def ExifTool(args, verbose):
+	try:
+		sys.stdout.flush()
+		et_subproccess = subprocess.run(['perl', exiftool_location, *args], capture_output=True, text=True)
+		if verbose:
+			sys.stdout.write(et_subproccess.stdout)
+		metadata = json.loads(et_subproccess.stdout)
+	except :
+		sys.stdout.write('Exiftool returned an error: no files to parse or invalid data\n')
+		exit()
+	return metadata
 
 
 def main():
