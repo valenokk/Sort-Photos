@@ -335,7 +335,7 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, d
 
 	args += [src_dir]
 
-	# get all metadata
+	# get all metadatasds
 	print('Preprocessing with ExifTool.  May take a while for a large number of files.')
 	metadata = ExifTool(args, verbose)
 
@@ -350,6 +350,7 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, d
 	# track files modified/skipped
 	files_modified = []
 	files_skipped = []
+	files_errors = []
 
 	# parse output extracting oldest relevant date
 	for idx, data in enumerate(metadata):
@@ -489,11 +490,25 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, d
 			if copy_files:
 				files_modified.append(dest_file)
 				if not test:
-					shutil.copy2(src_file, dest_file)
+					try:
+						shutil.copy2(src_file, dest_file)
+					except OSError as err:
+						files_errors.append(dest_file)
+						print('File copy failed: '+ err.strerror )
+					except:
+						files_errors.append(dest_file)
+						print('Unknown Error: '+ sys.exc_info())
 			else:
 				files_modified.append(dest_file)
 				if not test:
-					shutil.move(src_file, dest_file)
+					try:
+						shutil.move(src_file, dest_file)
+					except OSError as err:
+						files_errors.append(dest_file)
+						print('File move failed: ' + err.strerror)
+					except:
+						files_errors.append(dest_file)
+						print('Unknown Error: '+ sys.exc_info())
 
 		if verbose:
 			print()
@@ -509,6 +524,10 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, d
 	print('Files skipped (' + str(len(files_skipped)) + '): ')
 	for skipped in files_skipped:
 		print('\t' + str(skipped))
+	if files_errors:
+		print('Files with copy/move errors: (' + str(len(files_modified)) + '): ')
+		for errors in files_errors:
+			print('\t' + str(errors))
 
 
 def ExifTool(args, verbose):
